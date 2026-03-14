@@ -6,10 +6,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from detoxify import Detoxify
 from tqdm import tqdm
-
-from scripts.hook import Hook
-from scripts.compute_probs import Probe
-from scripts.listener import Listener
+from reprobe import Steerer, Probe, Monitor
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,44 +15,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-class Steerer(Hook):
-    def __init__(self, model, probes: list, alpha: float = 20.0):
-        super().__init__(model)
-        self.probes: list[tuple[Probe, float]] = [
-            (p, alpha) if isinstance(p, Probe) else (p[0], p[1])
-            for p in probes
-        ]
-
-    def _get_hook(self, layer_idx, data):
-        probe, alpha = data
-        
-        device = next(self.model.parameters()).device
-        dtype = next(self.model.parameters()).dtype
-        direction = probe.get_direction().to(device, dtype)
-        
-        def _hook_fn(module, input, output):
-            if isinstance(output, tuple):
-                hidden = output[0]
-                
-                # Scalair product
-                # (batch, seq, dim) @ (dim,) -> (batch, seq)
-                dot_product = torch.matmul(hidden, direction)
-                
-                # (batch, seq, 1) * (dim,) -> (batch, seq, dim)
-                projection = dot_product.unsqueeze(-1) * direction
-                
-                hidden = hidden - alpha * direction
-                return (hidden,) + output[1:]
-            else:
-                dot_product = torch.matmul(output, direction)
-                projection = dot_product.unsqueeze(-1) * direction
-                return output - alpha * projection
-        return _hook_fn
-
-    def _get_layers_to_hook(self):
-        return [(probe.meta["layer"], (probe, alpha)) for probe, alpha in self.probes]
-        
 
 
 def generate(model, tokenizer, inputs, max_new_tokens=150):
@@ -75,7 +34,7 @@ def score(detox, text: str) -> float:
 if __name__ == "__main__":
     import tomllib
 
-    with open("config.toml", "rb") as f:
+    with open("scripts/config.toml", "rb") as f:
         config = tomllib.load(f)
 
     model_id = config["model"]["name"]
@@ -114,7 +73,7 @@ if __name__ == "__main__":
 
     probes = [Probe.load_from_file(f"{probe_dir}/layer_{l}.pt") for l in LAYERS_TO_STEER]
     steerer = Steerer(model, probes=probes, alpha=ALPHA)
-    listener = Listener(model, probes=probes) # On utilise les mêmes probes
+    listener = Monitor(model, probes=probes) # On utilise les mêmes probes
 
     results = []
 
