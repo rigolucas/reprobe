@@ -2,7 +2,7 @@ from .steerer import Steerer
 from .monitor import Monitor
 from .probe import Probe
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 import json
 import os
 import torch
@@ -77,7 +77,8 @@ class ProbeLoader:
     def steerer(
         model,
         path: str,
-        alpha: float | dict[int, float] | Callable[[dict], float] = 0.7,
+        mode: Literal['projected', 'uniform'] = "projected",
+        alpha: float | dict[int, float] | Callable[[dict], float] = 1.0,
         filter: Callable[[dict], bool] = None,
     ):
         probes = ProbeLoader.load(path)
@@ -91,4 +92,4 @@ class ProbeLoader:
         else:
             probe_list = list(probes.values())
             
-        return Steerer(model, probe_list, alpha=alpha) #alpha will be automatically ignored in the 2 first case
+        return Steerer(model, probe_list, mode=mode, alpha=alpha) #alpha will be automatically ignored in the 2 first case
