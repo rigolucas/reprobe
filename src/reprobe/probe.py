@@ -6,7 +6,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from sklearn.metrics import roc_auc_score
 import tqdm
+import logging
 
+logger = logging.getLogger(__name__)
 class ProbesTrainer():
     def __init__(self, model_id: str, hidden_dim: int, device: torch.device = "cpu"):
         self.model_id = model_id
@@ -136,7 +138,7 @@ class ProbesTrainer():
             if show_stats:
                 tqdm.tqdm.write(f"Layer {real_layer} | ROC-AUC: {acc:.3f}")
     
-    def save(self, dir: str, one_file: bool = False):
+    def save(self, dir: str, one_file: bool = False, merge = False):
         if not self.training_mode:
             raise RuntimeError('Please call "train_probes" before save.')
         os.makedirs(dir, exist_ok=True)
@@ -151,16 +153,30 @@ class ProbesTrainer():
             }
             }
         if not one_file:
+            path = os.path.join(dir, "registry.json")
+        else:
+            path = os.path.join(dir, f"{self.model_id}_probes.pt")
+        
+        if not os.path.exists(path) and merge:
+            logger.warning(f"No probe file existing in {dir}")
+        elif merge:
+            if not one_file:
+                with open(path, "r") as f:
+                    registry = json.load(f)
+            else:
+                registry = torch.load(path)
+        if not one_file:
+            
             for layer, probe in self.probes.items():
                 filename = f"layer_{layer}.pt"
                 probe.save(os.path.join(dir, filename))
                 registry["probes"][self.training_mode][layer] = {**probe.meta, "filename": filename}
-            with open(os.path.join(dir, "registry.json"), "w") as f:
+            with open(path, "w") as f:
                 json.dump(registry, f, indent=2)
         else:
             for layer, probe in self.probes.items():
                 registry["probes"][self.training_mode][layer] = probe._to_save()
-            torch.save(registry, os.path.join(dir, f"{self.model_id}_probes.pt"))
+            torch.save(registry, path)
         
 class Probe(nn.Module):
     def __init__(
