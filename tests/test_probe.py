@@ -27,3 +27,11 @@ def test_probe_save_and_load():
         assert torch.allclose(original_w, loaded_w), "Les poids ont changé après save/load !"
     finally:
         os.remove(path)
+        
+        
+def test_probe_get_direction_guard_zero_norm():
+    probe = Probe(hidden_dim=4, concepts=["a"], layer=0, model_id="x", training_mode="token")
+    probe.model[0].weight.data.zero_()  # force le cas norm == 0
+    d = probe.get_direction()
+    assert torch.isfinite(d).all(), "get_direction must not return NaN"
+    assert d.shape[0] == 4

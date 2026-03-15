@@ -212,10 +212,13 @@ class Probe(nn.Module):
             x = (x - self.mean_act.to(x.device)) / self.std_act.to(x.device)
         return self.model(x)
     
-    def get_direction(self) -> torch.Tensor:
-        # Le vecteur de steering — c'est les weights du Linear
+    def get_direction(self):
         w = self.model[0].weight.data.squeeze(0)
-        return w/ w.norm()
+        norm = w.norm()
+        if norm == 0:
+            # returns a zero vector to avoid NaN
+            return torch.zeros_like(w)
+        return w / norm
     
     def _to_save(self):
         return {
