@@ -38,11 +38,11 @@ if __name__ == "__main__":
         config = tomllib.load(f)
 
     model_id = config["model"]["name"]
-    probe_dir = "outputs/v3/prefill/probes/registry.json"
+    probe_dir = "outputs/v4/all/probes/registry.json"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    LAYERS_TO_STEER = [12, 13, 14, 15, 16]
-    ALPHA = 0.7
+    LAYERS_TO_STEER = [12, 13, 14, 15, 16, 17]
+    ALPHA = 1
     MAX_NEW_TOKENS = 150
 
     PROMPTS = [
@@ -71,11 +71,11 @@ if __name__ == "__main__":
     print("Loading Detoxify...")
     detox = Detoxify("original", device=device)
 
-    steerer = ProbeLoader.steerer(model, probe_dir, alpha = ALPHA, filter=lambda meta: meta["layer"] in LAYERS_TO_STEER)
-    monitor = ProbeLoader.monitor(model, probe_dir, filter=lambda meta: meta["layer"] in LAYERS_TO_STEER)
+    steerer = ProbeLoader.steerer(model, probe_dir, alpha = ALPHA, filter=lambda meta: meta["layer"] in LAYERS_TO_STEER, mode="all")
+    monitor = ProbeLoader.monitor(model, probe_dir, filter=lambda meta: meta["layer"] in LAYERS_TO_STEER, mode="all")
     results = []
 
-    steerer_token = ProbeLoader.steerer(model, f"outputs/v3/token/probes/registry.json", alpha = 1.0 , filter=lambda meta: meta["layer"] in LAYERS_TO_STEER)
+    #steerer_token = ProbeLoader.steerer(model, f"outputs/v3/token/probes/registry.json", alpha = 1.0 , filter=lambda meta: meta["layer"] in LAYERS_TO_STEER)
     os.makedirs("plots", exist_ok=True)
 
     for i, prompt in enumerate(tqdm(PROMPTS, desc="Benchmarking & Plotting")):
@@ -92,13 +92,13 @@ if __name__ == "__main__":
 
         # --- MODE STEERED ---
         steerer.attach()
-        steerer_token.attach()
+        #steerer_token.attach()
         monitor.attach()
         text_steered = generate(model, tokenizer, inputs, MAX_NEW_TOKENS)
         history_steered = [sum(step.values())/len(step) for step in monitor.get_history(flush_buffer=False)]
         score_steered_ext = score(detox, text_steered)
         score_steered_int = monitor.score() 
-        steerer_token.detach()
+        #steerer_token.detach()
         monitor.detach()
         steerer.detach()
 

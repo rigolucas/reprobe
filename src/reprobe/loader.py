@@ -32,9 +32,9 @@ class ProbeLoader:
             for key, meta in registry["probes"][mode].items():
                 probe_path = os.path.join(dir, meta["filename"])
                 probe = Probe.load_from_file(probe_path)
-                mode = probe.meta["training_mode"]
-                if not mode or mode not in ["prefill", "token"]:
-                    logger.warning(f"Probe layer {probe.meta["layer"]} of {probe.meta["model_id"]} has an invalid mode: {mode}. Must be between 'token' and 'prefill'. Skipped")
+                probe_mode = probe.meta["training_mode"]
+                if not probe_mode or probe_mode not in ["prefill", "token"]:
+                    logger.warning(f"Probe layer {probe.meta["layer"]} of {probe.meta["model_id"]} has an invalid mode: {probe_mode}. Must be between 'token' and 'prefill'. Skipped")
                     continue
                 probes[mode][probe.meta["layer"]] = probe
                 
@@ -59,9 +59,9 @@ class ProbeLoader:
                     std_act=data["std_act"],
                     **data["meta"]
                 )
-                mode = probe.meta["training_mode"]
-                if not mode or mode not in ["prefill", "token"]:
-                    logger.warning(f"Probe layer {probe.meta["layer"]} of {probe.meta["model_id"]} has an invalid mode: {mode}. Must be between 'token' and 'prefill'. Skipped")
+                probe_mode = probe.meta["training_mode"]
+                if not probe_mode or probe_mode not in ["prefill", "token"]:
+                    logger.warning(f"Probe layer {probe.meta["layer"]} of {probe.meta["model_id"]} has an invalid mode: {probe_mode}. Must be between 'token' and 'prefill'. Skipped")
                     continue
                 probes[mode][probe.meta["layer"]] = probe
                 
@@ -79,36 +79,78 @@ class ProbeLoader:
 
         raise ValueError(f"Unsupported file type: {path}")
 
-    
+    @staticmethod
+    def _check_mode(
+        mode: Literal["prefill", "token", "all", "auto"],
+        probes: dict[str, Probe],
+        return_flatten_probes = False
+    ) -> dict[str, Probe] | list[Probe]:
+        
+        if mode in ["prefill", "token"]:
+            if not probes[mode]:
+                raise ValueError(f"The probes given are not compatible with the mode {mode}. Probes provided has the following keys: {probes.keys()}")
+            if return_flatten_probes:
+                return list(probes[mode].values())
+            
+        elif mode == "all":
+            if (not "prefill" in probes.keys()) or (not "token" in probes.keys()):
+                raise ValueError(f"The probes given are not compatible with the mode {mode}. Probes provided has the following keys: {probes.keys()}")
+            if return_flatten_probes:
+                return list(probes["prefill"].values()) + list(probes["token"].values())
+            
+        elif mode == "auto":
+            probe_list = list(probes["prefill"].values()) + list(probes["token"].values())
+            if not probe_list:
+                raise ValueError("No probes found")
+            if return_flatten_probes:
+                return probe_list
+            
+        else:
+            raise ValueError("Invalid mode")
+        
+        return probes # if return_flatten_probes=False
+            
     @staticmethod
     def monitor(
         model, 
         path: str,
+        mode: Literal["prefill", "token", "all", "auto"] = "auto",
         filter: Callable[[dict], bool] = None
     ):
         probes = ProbeLoader.load(path)
+        probes = ProbeLoader._check_mode(mode, probes, return_flatten_probes=True)
         if filter:
-            probes = {k: v for k, v in probes.items() if filter(v.meta)}
+            probes = [p for p in probes if filter(p.meta)]
         
-        return Monitor(model, list(probes.values()))
+        return Monitor(model, probes)
     
     @staticmethod
     def steerer(
         model,
         path: str,
-        mode: Literal['projected', 'uniform'] = "projected",
-        alpha: float | dict[int, float] | Callable[[dict], float] = 1.0,
+        mode: Literal["prefill", "token", "all", "auto"] = "auto",
+        steering_mode: Literal['projected', 'uniform'] = "projected",
+        alpha: float | dict[int, float] | dict[str, float] | Callable[[dict], float] = 1.0,
         filter: Callable[[dict], bool] = None,
     ):
         probes = ProbeLoader.load(path)
+        probes = ProbeLoader._check_mode(mode, probes, return_flatten_probes=True)
         if filter:
-            probes = {k: v for k, v in probes.items() if filter(v.meta)}
+            probes = [p for p in probes if filter(p.meta)]
         
         if callable(alpha):
-            probe_list = [(p, alpha(p.meta)) for p in probes.values()]
-        elif isinstance(alpha, dict):
-            probe_list = [(p, alpha.get(layer, 20.0)) for layer, p in probes.items()]
-        else:
-            probe_list = list(probes.values()) #Steerer will automatically add alpha
+            probe_list = [(p, alpha(p.meta)) for p in probes]
             
-        return Steerer(model, probe_list, mode=mode, alpha=alpha) #alpha will be automatically ignored in the 2 first case
+        elif isinstance(alpha, dict):
+            first_key = next(iter(alpha))
+            if isinstance(first_key, str):  # mode dict
+                probe_list = [(p, alpha.get(p.meta["training_mode"], 1.0)) for p in probes]
+            else:  # layer dict
+                probe_list = [(p, alpha.get(p.meta["layer"], 1.0)) for p in probes]
+                
+        else:
+            probe_list = probes #Steerer will automatically add alpha
+            
+        return Steerer(model, probe_list, mode=steering_mode, alpha=alpha) #alpha will be automatically ignored in the 2 first case
+    
+    
