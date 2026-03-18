@@ -24,7 +24,7 @@ class Interceptor(Hook):
         
         self.start_layer = start_layer
         
-        self._end_layer_arg = end_layer
+        self.end_layer = end_layer
         
     def _get_layers_to_hook(self):
         # None because we don't need special data
@@ -81,7 +81,7 @@ class Interceptor(Hook):
     
     def attach(self):
         self._resolve_layers_if_none()
-        if self._end_layer_arg is None:
+        if self.end_layer is None:
             self.end_layer = len(self._layers)
         return super().attach()
     
