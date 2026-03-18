@@ -18,8 +18,6 @@ class Interceptor(Hook):
         self.start_layer = start_layer
         self.end_layer = end_layer if end_layer is not None else len(model.model.layers)
         
-        self._was_prefill = True
-        
     def _get_layers_to_hook(self):
         # None because we don't need special data
         return [(i, None) for i in range(self.start_layer, self.end_layer)]
@@ -31,7 +29,6 @@ class Interceptor(Hook):
             
             hidden_states = output[0] if isinstance(output, tuple) else output
             is_prefill = hidden_states.shape[1] > 1 #if prefill is true, we're in the prefill moment
-            inference_moment = "prefill" if is_prefill else "token"
             
             if self.training_mode == "token":
                 if is_prefill:
@@ -40,10 +37,6 @@ class Interceptor(Hook):
                 if not is_prefill: #get only prefill
                     self._flush("prefill")
                     return   
-            elif self.training_mode == "all":
-                if self._was_prefill and not is_prefill:
-                    self._flush("prefill", block_capture=False) # flush to the prefill
-                self._was_prefill = False
             # Capture last token
             self._acts_buffer[layer_idx] = hidden_states[:, -1, :].detach() # stay on gpu
             
@@ -51,11 +44,15 @@ class Interceptor(Hook):
             if len(self._acts_buffer) == (self.end_layer - self.start_layer):
                 if self.training_mode == "prefill":
                     self._flush("prefill", block_capture=True)
+                elif self.training_mode == "all":
+                    if is_prefill:
+                        self._flush("prefill", block_capture=False)
+                    else:
+                        self._flush("token")
         return _hook_fn
     
     def allow_one_capture(self):
         self._capture_next = True
-        self._was_prefill = True
         return self  
     
     def _flush(self, to: Literal["prefill", "token"] ,block_capture=True):
@@ -65,7 +62,7 @@ class Interceptor(Hook):
             acts = [self._acts_buffer[l] for l in sorted_layers]
             
             stacked = torch.stack(acts, dim=0)  # [num_layers, batch, hidden_dim]
-            stacked_cpu = stacked.permute(1, 0, 2).cpu()   # [batch, num_layers, hidden_dim] to cpu
+            stacked_cpu = stacked.permute(1, 0, 2).float().cpu()   # [batch, num_layers, hidden_dim] to cpu
             
             for i in range(stacked_cpu.shape[0]):
                 self._activations[to] += [stacked_cpu[i].unsqueeze(0)] #[1, num_layers, hidden_dim]
@@ -89,4 +86,3 @@ class Interceptor(Hook):
         self._activations = {"prefill": [], "token": []}
         self._acts_buffer = {}
         self._capture_next = False
-        self._was_prefill = True
