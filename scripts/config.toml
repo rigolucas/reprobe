@@ -3,14 +3,14 @@ dataset = "PKU-Alignment/BeaverTails"
 
 [training]
 device = "auto"
-mode = "all"
+mode = "prefill"
 
 [model]
 name = "Qwen/Qwen2.5-1.5B"
-starting_layer = 12
+starting_layer = 1
 end_layer = "last"
 max_input_tokens = 2048
-batch_size = 64
+batch_size = 62
 
 [dataset]
 num_samples = 5000 # 250 safe + 250 unsafe = 500 total (idéal pour un premier test rapide)

@@ -241,10 +241,24 @@ class Probe(nn.Module):
         return self.model(x)
     
     def get_direction(self):
+        """
+        return direction, with normalization
+        """
         w = self.model[0].weight.data.squeeze(0)
         norm = w.norm()
         if norm == 0:
             # returns a zero vector to avoid NaN
+            return torch.zeros_like(w)
+        return w / norm
+    
+    def get_raw_direction(self):
+        """
+        Return the probe direction in the original (non-standardized) activation space.
+        Used by Steerer to project activations without prior normalization.
+        """
+        w = self.model[0].weight.data.squeeze(0) / self.std_act
+        norm = w.norm()
+        if norm == 0:
             return torch.zeros_like(w)
         return w / norm
     

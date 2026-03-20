@@ -36,6 +36,23 @@ def test_probe_get_direction_guard_zero_norm():
     d = probe.get_direction()
     assert torch.isfinite(d).all(), "get_direction must not return NaN"
     assert d.shape[0] == 4
+
+def test_probe_get_raw_direction():
+    hidden_dim = 4
+    probe = Probe(hidden_dim=hidden_dim, concepts=["a"], layer=0, model_id="x", training_mode="prefill")
+    probe.mean_act = torch.zeros(hidden_dim)
+    
+    # uniform std_act
+    probe.std_act = torch.ones(hidden_dim)
+    assert torch.allclose(probe.get_direction(), probe.get_raw_direction()) 
+    
+    assert torch.allclose(probe.get_raw_direction().norm(), torch.tensor(1.0), atol=1e-5) 
+    
+    # variable std_act
+    probe.std_act = torch.tensor([1.0, 2.0, 0.5, 1.0])
+    assert not torch.allclose(probe.get_direction(), probe.get_raw_direction()), "std_act must affect get_raw_direction"
+    
+    assert torch.allclose(probe.get_raw_direction().norm(), torch.tensor(1.0), atol=1e-5) 
     
 def test_save_merge():
     hidden_dim = 16

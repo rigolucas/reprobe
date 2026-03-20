@@ -24,8 +24,7 @@ class Steerer(Hook):
         
         device = next(self.model.parameters()).device
         dtype = next(self.model.parameters()).dtype
-        direction = probe.get_direction().to(device, dtype)
-        
+        direction = probe.get_raw_direction().to(device, dtype)
         mode = probe.meta["training_mode"]
         
         def _hook_fn(module, input, output):
