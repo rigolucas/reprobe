@@ -2,7 +2,7 @@
 
 Linear probes and activation steering for transformer safety research.
 
-Train probes on transformer activations, then use them to detect and suppress unsafe content in real time — during both the prefill and generation phases.
+Train probes on transformer activations, then use them to detect and suppress unsafe content in real time, during both the prefill and generation phases.
 
 ```bash
 pip install reprobe
@@ -47,7 +47,7 @@ labels = {"prefill": [], "token": []}
 
 for prompt in prompts:
     inputs = tokenizer(prompt, return_tensors="pt")
-    interceptor.allow_one_capture()
+    interceptor.allow_one_capture(batch_size = 1)
 
     with torch.no_grad():
         output_ids = model.generate(**inputs, max_new_tokens=100)

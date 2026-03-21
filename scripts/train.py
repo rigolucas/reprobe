@@ -49,6 +49,7 @@ if "__main__" == __name__:
 
     mode = config["training"].get("mode", "prefill")
     
+    dataset_dir = config.get("dataset_gen", {}).get("output_dir", "outputs")
     logger.info(f"Loading tokenizer and model {model_id}...")
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -76,19 +77,22 @@ if "__main__" == __name__:
     
     logger.info("Downloading/Loading BeaverTails dataset...")
     # On charge uniquement le split train pour aller vite
-    ds = load_dataset("PKU-Alignment/BeaverTails", split="330k_train")
-    
+    #ds = load_dataset("PKU-Alignment/BeaverTails", split="330k_train")
+    dataset_path = os.path.join(dataset_dir, f"violence_dataset.pt")
+    logger.info(f"Loading dataset from {dataset_path}...")
+    raw = torch.load(dataset_path)
     # 2. Filtrage ultra-strict pour la V0.0.1 (On cible la violence/guerre)
     logger.info(f"Filtering dataset: {num_samples} Safe vs {num_samples} Unsafe...")
-    
+    safe_data   = [x for x in raw if x["is_safe"]]
+    unsafe_data = [x for x in raw if not x["is_safe"]]
     
     # Données "Safe" classiques
-    safe_data = ds.filter(lambda x: x["is_safe"] == True).select(range(num_samples))
+    # safe_data = ds.filter(lambda x: x["is_safe"] == True).select(range(num_samples))
     
-    # Données "Unsafe" ciblées uniquement sur la violence (on ignore le reste pour le PoC)
-    unsafe_data = ds.filter(
-        lambda x: x["is_safe"] == False and (x["category"]["hate_speech,offensive_language"] or x["category"]["terrorism,organized_crime"])
-    ).select(range(num_samples))
+    # # Données "Unsafe" ciblées uniquement sur la violence (on ignore le reste pour le PoC)
+    # unsafe_data = ds.filter(
+    #     lambda x: x["is_safe"] == False and (x["category"]["hate_speech,offensive_language"] or x["category"]["terrorism,organized_crime"])
+    # ).select(range(num_samples))
 
     logger.info(f"Safe data: {len(safe_data)}, unsafe data: {len(unsafe_data)}")
     interceptor = Interceptor(model, start_layer_to_hook, end_layer, training_mode=mode).attach()
