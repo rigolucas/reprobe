@@ -6,7 +6,7 @@ device = "auto"
 mode = "all"
 
 [model]
-name = "Qwen/Qwen2.5-1.5B"
+name = "microsoft/phi-2"
 starting_layer = 1
 end_layer = "last"
 max_input_tokens = 2048
@@ -16,12 +16,12 @@ batch_size = 64
 num_samples = 5000 # 250 safe + 250 unsafe = 500 total (idéal pour un premier test rapide)
 
 [output]
-output_dir = "outputs/v4/all/"
+output_dir = "outputs/phi/all/"
 
 [dataset_gen]
 concept = "violence"        # "violence" | "hate_speech" | "manipulation"
-n_pairs = 1000               
+n_pairs = 3000               
 model = "gemma3:1b"         
 ollama_host = "http://localhost:11434"
 temperature = 0.9           # assez haut pour la diversité des paires
-output_dir = "outputs/v4/"
+output_dir = "outputs/phi/"
