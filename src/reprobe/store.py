@@ -1,10 +1,11 @@
 import json
+import logging
 import os
 import torch
 import h5py
 from typing import Literal
 
-
+logger = logging.getLogger(__name__)
 class ActivationStore:
     """
     Persistent store for activations and labels, backed by a single HDF5 file.
@@ -186,7 +187,7 @@ class ActivationStore:
         cur = self.cursors["prefill"]
 
         if cur + batch > self.N:
-            raise RuntimeError(
+            raise ValueError(
                 f"ActivationStore prefill overflow: "
                 f"tried to write {cur + batch} samples but N={self.N}."
             )
@@ -244,6 +245,18 @@ class ActivationStore:
 
     def _resume(self):
         with h5py.File(self.path, "r") as f:
+                
+            if self.N != int(f.attrs["N"]):
+                logger.warning(
+                    f"resume=True: N={self.N} ignored, using N={int(f.attrs['N'])} from existing file."
+                )
+
+            if self.mode != str(f.attrs["mode"]):
+                raise ValueError(
+                    f"Cannot resume a '{str(f.attrs['mode'])}' store with mode='{self.mode}'. "
+                    f"Pass mode='{str(f.attrs['mode'])}' or open a new file."
+                )
+                
             self.N = int(f.attrs["N"])
             self.mode = str(f.attrs["mode"])
             self.num_layers = int(f.attrs["num_layers"])
