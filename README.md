@@ -55,7 +55,7 @@ model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat1
 # 1. Load your probes and create a Steerer and Monitor
 # You can load from a local path or directly from HuggingFace Hub
 
-probe_dir = "YourUsername/your-probes-repo", # Local: "path/to/probes/registry.json" or "path/to/probes.pt"
+probe_dir = "YourUsername/your-probes-repo" # Local: "path/to/probes/registry.json" or "path/to/probes.pt"
 steerer = ProbeLoader.steerer(
     model,
     probe_dir,
@@ -83,7 +83,7 @@ print(tokenizer.decode(output[0]))
 
 # Retrieve monitor scores
 score = monitor.score(
-    strategy = "max_of_means"
+    strategy = "max_of_means",
     flush_buffer = False # Flush buffer resets the internal state of the monitor. If you want to re call score() or to calculate in continue the score, put it to False to keep intact the state. You must call at least on time flush_buffer between two generation. monitor.flush_buffer() does the same thing without scoring.
 )
 score_mean_of_means = monitor.score(
@@ -264,7 +264,7 @@ Interceptor(model, _layers_path="custom.transformer.blocks")
 If you want to contribute, run tests, or build from source:
 
 ```bash
-git clone https://github.com/YourUsername/reprobe
+git clone https://github.com/levashi/reprobe
 cd reprobe
 pip install -e ".[dev]"
 pytest
