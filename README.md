@@ -96,8 +96,9 @@ steerer.detach()
 
 # After detach, model can be recalled without monitor or steerer. But while probes stay attached, they are active
 ```
-
----
+> [!WARNING]
+> Always call `monitor.flush_buffer()` or `monitor.score(flush_buffer=True)` between two generations. 
+Calling score() without flushing accumulates history and returns incorrect results.
 
 ## End-to-End Workflow: Train Your Own Probes
 
@@ -268,6 +269,18 @@ cd reprobe
 pip install -e ".[dev]"
 pytest
 ```
+
+## Roadmap
+
+`reprobe` is actively developed. Here’s what’s coming next:
+
+- [ ] **Extend model support**: extand support to every encoder-only models for classification probing
+- [ ] **Unsupervised Reading (PCA/LAT):** Implement Linear Artificial Tomography to extract concepts without explicit labels using contrastive pairs (as seen in the original RepE paper).
+
+- [ ] **Visualization Suite:** Built-in tools to generate layer-wise heatmaps and activation density plots to "see" the concepts.
+
+- [ ] **Precision Control:** Support for KL-divergence monitoring to ensure steering doesn't degrade the model's base capabilities (perplexity tracking).
+
 
 ## Author
 
