@@ -6,7 +6,7 @@
 
 **Linear probes and activation steering for transformer safety research**
 
-*Based on the **RepE paper***
+*Inspired by the **RepE paper***
 
 `reprobe` is a tool for monitoring and steering LLMs. It helps you find where "concepts" (like toxicity or bias) live in the model's activations and lets you modify them in real-time.
 
@@ -71,7 +71,7 @@ monitor = ProbeLoader.monitor(
     filter=lambda meta: meta["layer"] in range(12, 20), mode="prefill" # montior generally only need "prefill" to be efficient. But you can put "all" also. Token is more inefficient
 )
 
-# 2. Attach hooks to the model (/!\ Steerer can affect you're generation output)
+# 2. Attach hooks to the model (/!\ Steerer can affect your generation output)
 monitor.attach()
 steerer.attach()
 
