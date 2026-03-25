@@ -13,6 +13,49 @@
 
 **Why?** I built `reprobe` to provide a practical, efficient implementation of the RepE paper. My goal was to create a tool that works with large models on normal hardware, without losing the mathematical clarity and control needed for safety research.
 
+
+## 🎭 Example: Narrative Steering with Qwen-3B
+
+This example demonstrates how `reprobe` shifts a model's "latent mood" by targeting a **Harmfulness** concept. We use the same prompt and only toggle the `alpha` (steering strength).
+
+**Setup:** 
+- **Model:** `Qwen2.5-3B-Instruct` 
+- **Layers:** `12` to `24` 
+- **Prompt:** `"Tell me a story about a king."`
+- **Mode**: `"all"`
+
+### 1. Neutral Base (α = 0.0)
+> "Once upon a time, there was a king who ruled over a vast kingdom. He was a just and fair ruler... One day, the king received a letter from a neighboring kingdom asking for help. The neighboring kingdom was facing a terrible drought, and their crops were withering away..."
+
+<details>
+<summary><b>Full ouput</b></summary>
+
+The king knew that he had to help, so he sent his best soldiers to the neighboring kingdom to bring them water and food. The soldiers traveled for many days, and finally arrived at the neighboring kingdom. They worked tirelessly to bring water and food to the people, and their efforts were greatly appreciated. The king was proud of his soldiers and their bravery, and he rewarded them with gold and jewels. The neighboring kingdom was grateful for the help, and they sent a delegation to thank the king. The king welcomed them warmly, and they spent many days together, sharing stories and laughter.
+</details>
+
+### 2. Steered Safe (α = 2.0)
+*Amplifying the "Harmless/Kind" direction.*
+> "Once upon a time, there was a king who ruled over a kingdom known for its **beauty and prosperity**. The king was a wise ruler who **cared deeply for his people**. His kingdom was a place of **peace and harmony**. He decided to help his neighbors because he could not watch others suffer..."
+
+<details>
+<summary><b>Full output</b></summary>
+
+The soldiers set out on their journey, but they soon found themselves in a dangerous forest. The soldiers were scared, but they knew that they had to keep moving forward if they wanted to reach their destination. As they walked deeper into the forest, they began to hear strange noises... Finally, after what seemed like hours of walking, the soldiers reached the edge of the forest. They saw a group of people huddled together, looking scared and helpless. The soldiers rushed to their aid, and together they were able to help the people of the neighboring kingdom. The king was overjoyed... he knew that his kingdom was blessed with people who were willing to help others in need.
+</details>
+
+### 3. Steered Aggressive (α = -2.0)
+*Inverting the probe to amplify latent "Dark/Tragic" concepts.*
+> "Once upon a time, there was a king who ruled over a vast kingdom. However, one day, a **terrible plague struck** the kingdom, and **many people died**. The king was **devastated and heartbroken** by the loss of his subjects. He vowed to travel to distant lands to seek a cure..."
+
+<details>
+<summary><b>Full output</b></summary>
+
+The king sent his best scientists and doctors to study the disease, but they were unable to find a cure. The king was heartbroken, but he refused to give up. He decided to travel to distant lands to seek out the knowledge of other cultures and to learn from their doctors and scientists. The king traveled for many years, visiting every corner of the world. Finally, he returned to his kingdom with a cure for the plague. The king was hailed as a hero, and his people rejoiced. The plague was no more, and the kingdom was once again prosperous and happy.
+</details>
+
+--- 
+> [!TIP]
+> The model completely shifts its narrative direction based on the applied probe. This demonstrates a highly successful steering intervention, where Qwen effortlessly oscillates between different latent storylines without degrading the grammar or structure.
 ## Features
 
 The library is designed to be highly ergonomic yet mathematically rigorous. It abstracts away the complex engineering so you can focus on the research.
@@ -68,7 +111,7 @@ steerer = ProbeLoader.steerer(
 monitor = ProbeLoader.monitor(
     model,
     probe_dir,
-    filter=lambda meta: meta["layer"] in range(12, 20), mode="prefill" # montior generally only need "prefill" to be efficient. But you can put "all" also. Token is more inefficient
+    filter=lambda meta: meta["layer"] in range(12, 20), mode="prefill" # monitor generally only need "prefill" to be efficient. But you can put "all" also. Token is more inefficient
 )
 
 # 2. Attach hooks to the model (/!\ Steerer can affect your generation output)
@@ -136,6 +179,7 @@ interceptor = Interceptor(model, start_layer=10, training_mode="all").attach()
 
 for prompt in prompts:
     inputs = tokenizer(prompt, return_tensors="pt")
+
     interceptor.allow_one_capture(batch_size=1) # IMPORTANT
 
     with torch.no_grad():
@@ -274,7 +318,7 @@ pytest
 
 `reprobe` is actively developed. Here’s what’s coming next:
 
-- [ ] **Extend model support**: extand support to every encoder-only models for classification probing
+- [ ] **Extend model support**: extend support to every encoder-only models for classification probing
 - [ ] **Unsupervised Reading (PCA/LAT):** Implement Linear Artificial Tomography to extract concepts without explicit labels using contrastive pairs (as seen in the original RepE paper).
 
 - [ ] **Visualization Suite:** Built-in tools to generate layer-wise heatmaps and activation density plots to "see" the concepts.
@@ -284,6 +328,6 @@ pytest
 
 ## Author
 
-`reprobe` is my first open-source library. I built it because I’m passionate about AI safety and I wanted to make activation steering more accessible for everyone. I spend months on it, so I hope it help you :)
+`reprobe` is my first open-source library. I built it because I’m passionate about AI safety and I wanted to make activation steering more accessible for everyone. I spent months on it, so I hope it help you :)
 
 Since I’m still learning, please feel free to open an issue or a PR if you find a bug or have an idea to improve the code. Every feedback is welcome!
