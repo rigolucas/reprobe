@@ -111,6 +111,11 @@ pip install reprobe
 
 _Tested on Python ≥ 3.11 and PyTorch ≥ 2.6._
 
+---
+
+> [!NOTE]
+> See a complete implementation of RepE pipeline with reprobe in [examples/repe_harmless.py](examples/repe_harmless.py)
+
 ## Quick Start: Monitor and/or Steering an LLM
 
 If you already have trained probes (locally or on the HuggingFace Hub), steering a model takes only a few lines of code. During inference, the library stays out of your way: it adapts to your workflow, not the other way around.
@@ -170,6 +175,7 @@ steerer.detach()
 
 # After detach, model can be recalled without monitor or steerer. But while probes stay attached, they are active
 ```
+
 > [!WARNING]
 > Always call `monitor.flush_buffer()` or `monitor.score(flush_buffer=True)` between two generations. 
 Calling score() without flushing accumulates history and returns incorrect results.
@@ -179,8 +185,6 @@ Calling score() without flushing accumulates history and returns incorrect resul
 Want to train your own probes? The workflow is divided into 3 simple steps: **Collect**, **Train**, and **Apply**.
 
 > **Tip:** I recommend using mode="all". It allows you to use the probes for either prefill or token steering later during inference.
-
-See a complete implementation of repE pipline with reprobe in examples/repe_harmless.py
 
 ### Step 1: Collect Activations
 
